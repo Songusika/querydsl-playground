@@ -1,20 +1,31 @@
 package study.querydsl;
 
 
+import static study.querydsl.domain.order.QOrder.order;
+import static study.querydsl.domain.order.QOrderMenu.orderMenu;
+import static study.querydsl.domain.reivew.QReview.review;
+import static study.querydsl.domain.store.QStore.store;
+
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.Commit;
 import study.querydsl.domain.menu.Menu;
 import study.querydsl.domain.order.Order;
 import study.querydsl.domain.order.OrderMenu;
+import study.querydsl.domain.order.QOrder;
+import study.querydsl.domain.order.QOrderMenu;
+import study.querydsl.domain.reivew.QReview;
 import study.querydsl.domain.reivew.Review;
+import study.querydsl.domain.store.QStore;
 import study.querydsl.domain.store.Store;
 import study.querydsl.domain.store.StoreCategory;
 import study.querydsl.repository.MenuRepository;
@@ -22,6 +33,7 @@ import study.querydsl.repository.OrderRepository;
 import study.querydsl.repository.ReviewRepository;
 import study.querydsl.repository.StoreCategoryRepository;
 import study.querydsl.repository.StoreRepository;
+import study.querydsl.repository.dto.QueryDslPopularStoreDto;
 
 //@Commit
 @Transactional
@@ -125,6 +137,7 @@ public class StoreOrderQueryTest {
         한식_가게들.forEach(한식_가게 -> {
             final List<Order> 한식_가게_주문들 = 한식_가게.getOrders();
             가게의_모든_주문에_리뷰를_작성한다(한식_가게_주문들);
+
         });
     }
 
@@ -132,6 +145,35 @@ public class StoreOrderQueryTest {
         가게_주문들.forEach(가게_주문 -> {
             final Review 리뷰 = repository.save(new Review("맛있어요", (가게_주문.getId().intValue() % 5) + 1, 가게_주문));
             가게_주문.addReview(리뷰);
+            final Optional<Review> byOrder = repository.findByOrder(가게_주문);
         });
+
+    }
+
+    @Test
+    void findPopularStoreThanWithJPQL() {
+//        final List<Store> all = jpaQueryFactory.selectFrom(store)
+//            .leftJoin(store.orders, order)
+//            .fetchJoin()
+//            .leftJoin(order.orderMenus, orderMenu)
+//            .fetchJoin()
+//            .groupBy(store.id, order.id)
+//            .leftJoin(order.review, review)
+//            .fetchJoin()
+//            .fetch();
+
+        final List<Store> stores = jpaQueryFactory.selectFrom(store).fetch();
+
+        final List<Order> orders = jpaQueryFactory.selectFrom(order)
+            .leftJoin(order.orderMenus, orderMenu)
+            .fetchJoin()
+            .leftJoin(order.review, review)
+            .fetchJoin()
+            .groupBy(order.id, orderMenu.id)
+            .fetch();
+
+        final List<QueryDslPopularStoreDto> popularStoreThan = storeRepository.findPopularStoreThan(
+            1L);
+        System.out.println("popularStoreThan.size() = " + popularStoreThan.size());
     }
 }

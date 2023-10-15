@@ -4,8 +4,8 @@ spring:
       enabled: true
 
   datasource:
-#    url: jdbc:h2:mem:querydsl-playground
-    url: jdbc:h2:tcp://localhost/~/Desktop/woowacourse/Study/h2/db/querydsl-playground
+    url: jdbc:h2:mem:querydsl-playground
+#    url: jdbc:h2:tcp://localhost/~/Desktop/woowacourse/Study/h2/db/querydsl-playground
     username: sa
     password:
     driver-class-name: org.h2.Driver
@@ -16,9 +16,13 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        use_sql_comments: true
+#        use_sql_comments: true
 
-logging:
-  level:
-    org.hibernate.SQL: debug
-    org.hibernate.type: trace
+#logging:
+#  level:
+#    org.hibernate.SQL: debug
+#    org.hibernate.type: trace
+#
+#logging:
+#  level:
+#    org.hibernate.orm.jdbc.bind: trace
