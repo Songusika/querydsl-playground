@@ -1,16 +1,11 @@
 package study.querydsl;
 
 
-import static study.querydsl.domain.order.QOrder.order;
-import static study.querydsl.domain.order.QOrderMenu.orderMenu;
-import static study.querydsl.domain.reivew.QReview.review;
-import static study.querydsl.domain.store.QStore.store;
-
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.transaction.Transactional;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.IntStream;
+import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
@@ -21,11 +16,7 @@ import org.springframework.test.annotation.Commit;
 import study.querydsl.domain.menu.Menu;
 import study.querydsl.domain.order.Order;
 import study.querydsl.domain.order.OrderMenu;
-import study.querydsl.domain.order.QOrder;
-import study.querydsl.domain.order.QOrderMenu;
-import study.querydsl.domain.reivew.QReview;
 import study.querydsl.domain.reivew.Review;
-import study.querydsl.domain.store.QStore;
 import study.querydsl.domain.store.Store;
 import study.querydsl.domain.store.StoreCategory;
 import study.querydsl.repository.MenuRepository;
@@ -33,14 +24,15 @@ import study.querydsl.repository.OrderRepository;
 import study.querydsl.repository.ReviewRepository;
 import study.querydsl.repository.StoreCategoryRepository;
 import study.querydsl.repository.StoreRepository;
+import study.querydsl.repository.dto.JPQLPopularStoreDto;
 import study.querydsl.repository.dto.QueryDslPopularStoreDto;
 
-//@Commit
+@Commit
 @Transactional
 @SpringBootTest
 @SuppressWarnings("NonAsciiCharacters")
 @DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
-public class StoreOrderQueryTest {
+class StoreOrderQueryTest {
 
     @Autowired
     private StoreCategoryRepository storeCategoryRepository;
@@ -51,7 +43,7 @@ public class StoreOrderQueryTest {
     @Autowired
     private OrderRepository orderRepository;
     @Autowired
-    private ReviewRepository repository;
+    private ReviewRepository reviewRepository;
     @Autowired
     private JPAQueryFactory jpaQueryFactory;
 
@@ -143,37 +135,58 @@ public class StoreOrderQueryTest {
 
     private void 가게의_모든_주문에_리뷰를_작성한다(final List<Order> 가게_주문들) {
         가게_주문들.forEach(가게_주문 -> {
-            final Review 리뷰 = repository.save(new Review("맛있어요", (가게_주문.getId().intValue() % 5) + 1, 가게_주문));
+            final Review 리뷰 = reviewRepository.save(new Review("맛있어요", (가게_주문.getId().intValue() % 5) + 1));
             가게_주문.addReview(리뷰);
-            final Optional<Review> byOrder = repository.findByOrder(가게_주문);
         });
 
     }
 
     @Test
-    void findPopularStoreThanWithJPQL() {
-//        final List<Store> all = jpaQueryFactory.selectFrom(store)
-//            .leftJoin(store.orders, order)
-//            .fetchJoin()
-//            .leftJoin(order.orderMenus, orderMenu)
-//            .fetchJoin()
-//            .groupBy(store.id, order.id)
-//            .leftJoin(order.review, review)
-//            .fetchJoin()
-//            .fetch();
+    void findPopularStoreThanWithQueryDsl() {
+        // given
+        final Store currentStore = storeRepository.findById(1L).get();
 
-        final List<Store> stores = jpaQueryFactory.selectFrom(store).fetch();
-
-        final List<Order> orders = jpaQueryFactory.selectFrom(order)
-            .leftJoin(order.orderMenus, orderMenu)
-            .fetchJoin()
-            .leftJoin(order.review, review)
-            .fetchJoin()
-            .groupBy(order.id, orderMenu.id)
-            .fetch();
-
+        // then
         final List<QueryDslPopularStoreDto> popularStoreThan = storeRepository.findPopularStoreThan(
             1L);
-        System.out.println("popularStoreThan.size() = " + popularStoreThan.size());
+
+        // then
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(popularStoreThan.size()).isEqualTo(4);
+            softly.assertThat(popularStoreThan).allMatch(store -> store.getTotalOrderedMenuCount() >= calculateTotalOrderedMenuCountOfStore(currentStore));
+            softly.assertThat(popularStoreThan).allMatch(store -> store.getTotalReviewScore() >= calculateTotalReviewRateOfStore(currentStore));
+        });
+    }
+
+    @Test
+    void findPopularStoreThanWithJPQL() {
+        // given
+        final Store currentStore = storeRepository.findById(1L).get();
+
+        // when
+        final List<JPQLPopularStoreDto> popularStoreThanWithJPQL = storeRepository.findPopularStoreThanWithJPQL(1L);
+
+        // then
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(popularStoreThanWithJPQL.size()).isEqualTo(4);
+            softly.assertThat(popularStoreThanWithJPQL).allMatch(store -> store.getTotalOrderedMenuCount() >= calculateTotalOrderedMenuCountOfStore(currentStore));
+            softly.assertThat(popularStoreThanWithJPQL).allMatch(store -> store.getTotalReviewScore() >= calculateTotalReviewRateOfStore(currentStore));
+        });
+    }
+
+    private int calculateTotalOrderedMenuCountOfStore(final Store store) {
+        return store.getOrders().stream()
+            .map(Order::getOrderMenus)
+            .mapToInt(orderMenus -> orderMenus.stream()
+                .mapToInt(OrderMenu::getQuantity)
+                .sum()
+            )
+            .sum();
+    }
+
+    private int calculateTotalReviewRateOfStore(final Store store) {
+        return store.getOrders().stream()
+            .mapToInt(order -> order.getReview().getRate())
+            .sum();
     }
 }

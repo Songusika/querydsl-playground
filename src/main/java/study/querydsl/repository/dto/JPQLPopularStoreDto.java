@@ -5,6 +5,6 @@ import study.querydsl.domain.order.Order;
 public interface JPQLPopularStoreDto {
 
     Order getOrder();
-    int getTotalMenuCount();
-    int getTotalReviewStore();
+    int getTotalOrderedMenuCount();
+    int getTotalReviewScore();
 }

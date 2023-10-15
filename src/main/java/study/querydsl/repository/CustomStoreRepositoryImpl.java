@@ -9,13 +9,12 @@ import static study.querydsl.domain.store.QStore.store;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.NumberExpression;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.JPQLQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import study.querydsl.domain.order.QOrder;
 import study.querydsl.domain.order.QOrderMenu;
-import study.querydsl.domain.reivew.QReview;
 import study.querydsl.domain.store.StoreCategory;
 import study.querydsl.repository.dto.QueryDslPopularStoreDto;
 
@@ -30,7 +29,7 @@ public class CustomStoreRepositoryImpl implements CustomStoreRepository {
                 Projections.fields(
                         QueryDslPopularStoreDto.class,
                         store.as("store"),
-                        orderMenu.quantity.sum().coalesce(0).as("totalMenuCount"),
+                        orderMenu.quantity.sum().coalesce(0).as("totalOrderedMenuCount"),
                         review.rate.sum().coalesce(0).as("totalReviewScore"))
             )
             .from(store)
@@ -70,10 +69,10 @@ public class CustomStoreRepositoryImpl implements CustomStoreRepository {
     }
 
     private JPQLQuery<Integer> getTotalRateOfStore(final long id) {
-        final QReview review2 = new QReview("review2");
+        final QOrder order2 = new QOrder("order2");
 
-        return select(review.rate.sum())
-            .from(review2)
-            .where(review2.order.store.id.eq(id));
+        return select(order2.review.rate.sum())
+            .from(order2)
+            .where(order2.store.id.eq(id));
     }
 }

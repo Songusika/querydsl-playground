@@ -54,7 +54,7 @@ public class Order {
     }
 
     public void addReview(final Review review) {
-        if(this.review != null) {
+        if(this.review == null) {
             this.review = review;
         }
     }
